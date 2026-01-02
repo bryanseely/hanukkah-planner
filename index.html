@@ -192,8 +192,9 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, doc, onSnapshot, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-        // --- 1. PASTE YOUR CONFIG HERE ---
+        // --- 1. CONFIGURATION ---
         const firebaseConfig = {
             apiKey: "AIzaSyBIJNSO8FoY2hkUvWqEaITow9pMdDppskU",
             authDomain: "hanukkah-planner-a98b2.firebaseapp.com",
@@ -205,10 +206,28 @@
 
         // Initialize Firebase
         let db;
+        let auth;
+        
         try {
             const app = initializeApp(firebaseConfig);
             db = getFirestore(app);
-            document.getElementById('connection-status').innerText = "Cloud Active";
+            auth = getAuth(app);
+            
+            // Authentication Status Listener
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    document.getElementById('connection-status').innerText = "Cloud Active (Secure)";
+                    setupDatabaseListeners();
+                } else {
+                    document.getElementById('connection-status').innerText = "Signing in...";
+                    signInAnonymously(auth).catch((error) => {
+                        console.error("Auth failed", error);
+                        document.getElementById('connection-status').innerText = "Login Error";
+                        document.getElementById('connection-status').className = "text-xs text-red-400 mt-2 font-bold";
+                    });
+                }
+            });
+
         } catch (e) {
             console.error("Firebase config missing or invalid", e);
             document.getElementById('connection-status').innerText = "Setup Required: See Code";
@@ -227,8 +246,8 @@
 
         // --- Database Logic ---
 
-        // Listen for real-time updates
-        if (db) {
+        function setupDatabaseListeners() {
+            if (!db) return;
             const plannerRef = doc(db, "hanukkah", "planner_v1");
             const candleRef = doc(db, "hanukkah", "candles_v1");
 
